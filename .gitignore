@@ -1,0 +1,11 @@
+node_modules/
+.env
+.DS_Store
+*.log
+.vscode/
+.idea/
+# GoogleサービスアカウントのJSONファイル（機密情報）
+*-*.json
+!package.json
+!package-lock.json
+
