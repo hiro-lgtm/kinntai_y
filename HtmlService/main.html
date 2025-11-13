@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>勤怠管理</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <?!= HtmlService.createHtmlOutputFromFile('HtmlService/assets/style').getContent(); ?>
+  </head>
+  <body>
+    <div id="app" data-initial-page="<?= initialPage || 'login' ?>">
+      <div class="login-page" data-state="login">
+        <header>
+          <h1>勤怠管理システム</h1>
+        </header>
+        <form id="loginForm">
+          <label>
+            社員ID
+            <input type="text" name="employeeId" required />
+          </label>
+          <label>
+            パスワード
+            <input type="password" name="password" required />
+          </label>
+          <button type="submit" class="btn primary">ログイン</button>
+        </form>
+        <p class="message" id="loginMessage"></p>
+      </div>
+
+      <div class="clock-page" data-state="clock">
+        <header class="clock-header">
+          <div>
+            <h2 id="employeeName">--</h2>
+            <p id="employeeId">--</p>
+          </div>
+          <div class="datetime">
+            <span id="currentDate">--</span>
+            <span id="currentTime">--</span>
+          </div>
+          <button id="logoutBtn" class="btn ghost">ログアウト</button>
+        </header>
+
+        <section class="status-card">
+          <h3>現在ステータス</h3>
+          <p id="currentStatus">--</p>
+          <ul id="recentEvents"></ul>
+        </section>
+
+        <section class="buttons-grid">
+          <button data-event="CLOCK_IN" class="btn action">出勤</button>
+          <button data-event="BREAK_START" class="btn action">休憩入</button>
+          <button data-event="BREAK_END" class="btn action">休憩出</button>
+          <button data-event="CLOCK_OUT" class="btn action danger">退勤</button>
+        </section>
+
+        <section class="history">
+          <h3>本日の履歴</h3>
+          <ul id="todayLog"></ul>
+        </section>
+      </div>
+    </div>
+
+    <script>
+      window.__INITIAL_TOKEN__ = '<?= initialToken || '' ?>';
+      window.__EMPLOYEE_NAME__ = '<?= employeeName || '' ?>';
+      window.__EMPLOYEE_ID__ = '<?= employeeId || '' ?>';
+    </script>
+    <?!= HtmlService.createHtmlOutputFromFile('HtmlService/assets/app').getContent(); ?>
+  </body>
+</html>
+

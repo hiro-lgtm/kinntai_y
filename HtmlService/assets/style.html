@@ -1,0 +1,363 @@
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f5f7fb;
+    --fg: #1f2a44;
+    --accent: #3478f6;
+    --danger: #d6454f;
+    --card-bg: #ffffff;
+  }
+
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+    background: var(--bg);
+    color: var(--fg);
+  }
+
+  #app {
+    max-width: 420px;
+    margin: 0 auto;
+    padding: 24px 16px 48px;
+  }
+
+  header h1,
+  header h2 {
+    margin: 0;
+  }
+
+  .login-page {
+    display: none;
+    padding-top: 48px;
+  }
+
+  .clock-page {
+    display: none;
+  }
+
+  .login-page.active,
+  .clock-page.active {
+    display: block;
+  }
+
+  form {
+    display: grid;
+    gap: 16px;
+    margin-top: 32px;
+  }
+
+  label {
+    font-size: 14px;
+    display: grid;
+    gap: 8px;
+  }
+
+  input {
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #d1d5de;
+    font-size: 16px;
+  }
+
+  .btn {
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .btn.primary {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  .btn.ghost {
+    background: transparent;
+    border: 1px solid rgba(31, 42, 68, 0.2);
+  }
+
+  .btn.action {
+    background: #ffffff;
+    border: 1px solid rgba(31, 42, 68, 0.08);
+    box-shadow: 0 8px 20px rgba(31, 42, 68, 0.08);
+    font-size: 18px;
+    padding: 24px 12px;
+    color: #1f2a44;
+  }
+
+  .btn.action.danger {
+    background: var(--danger);
+    color: #fff;
+  }
+
+  .btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .clock-header {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .datetime {
+    text-align: right;
+    font-weight: 600;
+  }
+
+  .status-card,
+  .history {
+    margin-top: 24px;
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 6px 18px rgba(31, 42, 68, 0.08);
+  }
+
+  .buttons-grid {
+    margin-top: 24px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .message {
+    margin-top: 16px;
+    min-height: 24px;
+    color: var(--danger);
+  }
+
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    transform: translateX(-50%);
+    background: rgba(31, 42, 68, 0.9);
+    color: #fff;
+    padding: 12px 18px;
+    border-radius: 12px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  }
+
+  .toast.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-10px);
+  }
+
+  .toast[data-type='error'] {
+    background: rgba(214, 69, 79, 0.95);
+  }
+
+  .admin-page {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 24px 16px 64px;
+  }
+
+  .admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .admin-meta {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    font-size: 14px;
+  }
+
+  .admin-filters {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 16px 20px;
+    box-shadow: 0 4px 14px rgba(31, 42, 68, 0.08);
+    margin-bottom: 24px;
+  }
+
+  .admin-filters form {
+    display: grid;
+    gap: 12px;
+  }
+
+  .admin-filters .filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: flex-end;
+  }
+
+  .admin-filters label {
+    flex: 1;
+    min-width: 180px;
+  }
+
+  .admin-filters select {
+    width: 100%;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #d1d5de;
+    font-size: 16px;
+    background: #fff;
+  }
+
+  .summary-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .summary-cards .card {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 6px 18px rgba(31, 42, 68, 0.08);
+  }
+
+  .summary-cards .label {
+    margin: 0;
+    font-size: 14px;
+    opacity: 0.7;
+  }
+
+  .summary-cards .value {
+    margin: 8px 0 0;
+    font-size: 24px;
+    font-weight: 700;
+  }
+
+  .admin-table-section {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 6px 18px rgba(31, 42, 68, 0.08);
+    margin-bottom: 24px;
+  }
+
+  .table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 12px;
+  }
+
+  .table-wrapper {
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+
+  th,
+  td {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(31, 42, 68, 0.1);
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  thead {
+    background: rgba(31, 42, 68, 0.04);
+  }
+
+  tbody tr:hover {
+    background: rgba(52, 120, 246, 0.08);
+  }
+
+  .table-placeholder {
+    text-align: center;
+    color: rgba(31, 42, 68, 0.6);
+  }
+
+  .admin-logs {
+    background: var(--card-bg);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 6px 18px rgba(31, 42, 68, 0.08);
+  }
+
+  .admin-logs h2 {
+    margin-top: 0;
+  }
+
+  .admin-logs ul {
+    margin-top: 12px;
+    display: grid;
+    gap: 8px;
+  }
+
+  .admin-logs li {
+    padding: 12px;
+    border-radius: 12px;
+    background: rgba(214, 69, 79, 0.12);
+    color: var(--danger);
+  }
+
+  .admin-logs li.empty {
+    background: rgba(31, 42, 68, 0.06);
+    color: rgba(31, 42, 68, 0.6);
+  }
+
+  @media (max-width: 720px) {
+    .admin-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .admin-filters .filter-row {
+      flex-direction: column;
+      align-items: stretch;
+    }
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #101420;
+      --fg: #eef1fb;
+      --card-bg: #1a2135;
+    }
+
+    input {
+      border: 1px solid rgba(238, 241, 251, 0.2);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--fg);
+    }
+
+    .btn.action {
+      color: #1f2a44;
+    }
+
+    .admin-filters select {
+      border: 1px solid rgba(238, 241, 251, 0.2);
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--fg);
+    }
+
+    thead {
+      background: rgba(238, 241, 251, 0.08);
+    }
+
+    tbody tr:hover {
+      background: rgba(52, 120, 246, 0.16);
+    }
+  }
+</style>
+

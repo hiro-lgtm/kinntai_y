@@ -1,0 +1,262 @@
+<script>
+  (function () {
+    const state = {
+      token: window.__INITIAL_TOKEN__ || null,
+      employee: window.__EMPLOYEE_NAME__
+        ? { name: window.__EMPLOYEE_NAME__, id: window.__EMPLOYEE_ID__ || '' }
+        : null,
+      currentState: 'NONE'
+    };
+
+    document.addEventListener('DOMContentLoaded', init);
+
+    function init() {
+      const app = document.getElementById('app');
+      const initialPage = app.dataset.initialPage || 'login';
+      const loginPage = document.querySelector('.login-page');
+      const clockPage = document.querySelector('.clock-page');
+      const loginForm = document.getElementById('loginForm');
+      const loginMessage = document.getElementById('loginMessage');
+      const logoutBtn = document.getElementById('logoutBtn');
+      const buttons = document.querySelectorAll('.buttons-grid button');
+
+      function showPage(page) {
+        loginPage.classList.toggle('active', page === 'login');
+        clockPage.classList.toggle('active', page === 'clock');
+      }
+
+      function startClock() {
+        updateClock();
+        setInterval(updateClock, 30000);
+      }
+
+      function updateClock() {
+        const now = new Date();
+        document.getElementById('currentDate').textContent = now.toLocaleDateString('ja-JP', {
+          month: 'long',
+          day: 'numeric',
+          weekday: 'short'
+        });
+        document.getElementById('currentTime').textContent = now.toLocaleTimeString('ja-JP', {
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+
+      function translateState(currentState) {
+        return {
+          NONE: '未出勤',
+          WORKING: '勤務中',
+          BREAK: '休憩中',
+          CLOCKED_OUT: '退勤済み'
+        }[currentState] || '--';
+      }
+
+      function formatEventType(eventType) {
+        return {
+          CLOCK_IN: '出勤',
+          CLOCK_OUT: '退勤',
+          BREAK_START: '休憩入',
+          BREAK_END: '休憩出'
+        }[eventType] || eventType;
+      }
+
+      function formatTime(ts) {
+        return new Date(ts).toLocaleTimeString('ja-JP', {
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+
+      function updateButtonStates() {
+        const machine = {
+          NONE: ['CLOCK_IN'],
+          WORKING: ['BREAK_START', 'CLOCK_OUT'],
+          BREAK: ['BREAK_END'],
+          CLOCKED_OUT: []
+        };
+        const allowed = machine[state.currentState] || [];
+        buttons.forEach(btn => {
+          const event = btn.dataset.event;
+          btn.disabled = !allowed.includes(event);
+        });
+      }
+
+      function renderEvents(events) {
+        const list = document.getElementById('recentEvents');
+        list.innerHTML = '';
+        (events || []).slice(0, 3).forEach(event => {
+          const li = document.createElement('li');
+          li.textContent = `${formatEventType(event.eventType)}: ${formatTime(event.timestamp)}`;
+          list.appendChild(li);
+        });
+      }
+
+      function renderTodayLog(logs) {
+        const list = document.getElementById('todayLog');
+        list.innerHTML = '';
+        (logs || []).forEach(log => {
+          const li = document.createElement('li');
+          li.textContent = `${formatEventType(log.eventType)} ${formatTime(log.timestamp)}`;
+          list.appendChild(li);
+        });
+      }
+
+      function showToast(message, isError) {
+        let toast = document.querySelector('.toast');
+        if (!toast) {
+          toast = document.createElement('div');
+          toast.className = 'toast';
+          document.body.appendChild(toast);
+        }
+        toast.textContent = message;
+        toast.dataset.type = isError ? 'error' : 'info';
+        toast.classList.add('visible');
+        setTimeout(() => toast.classList.remove('visible'), 4000);
+      }
+
+      function handleSessionExpired() {
+        state.token = null;
+        state.employee = null;
+        showToast('セッションが切れました。再度ログインしてください。', true);
+        showPage('login');
+      }
+
+      function handleStatusResponse(data) {
+        if (data.status !== 'success') {
+          if (data.code === 'SESSION_INVALID') {
+            handleSessionExpired();
+          }
+          return;
+        }
+        state.currentState = data.currentState || 'NONE';
+        document.getElementById('currentStatus').textContent = translateState(state.currentState);
+        renderEvents(data.recentEvents);
+        renderTodayLog(data.todayLog);
+        updateButtonStates();
+        if (data.warnings && data.warnings.length) {
+          showToast(data.warnings.join('\n'), false);
+        }
+      }
+
+      function callApi(payload) {
+        return new Promise((resolve, reject) => {
+          google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(error => {
+              reject(error);
+            })
+            .handleApi(JSON.stringify(payload));
+        });
+      }
+
+      async function login(event) {
+        event.preventDefault();
+        loginMessage.textContent = '';
+
+        const form = new FormData(loginForm);
+        const payload = {
+          action: 'LOGIN',
+          employeeId: form.get('employeeId'),
+          password: form.get('password')
+        };
+
+        try {
+          const response = await callApi(payload);
+          if (response.status !== 'success') {
+            loginMessage.textContent = 'ログイン失敗: ' + (response.code || '');
+            return;
+          }
+          state.token = response.token;
+          state.employee = response.employee;
+          document.getElementById('employeeName').textContent = response.employee.name;
+          document.getElementById('employeeId').textContent = response.employee.id;
+          showPage('clock');
+          startClock();
+          fetchStatus();
+        } catch (error) {
+          loginMessage.textContent = 'ログインに失敗しました: ' + error.message;
+        }
+      }
+
+      async function fetchStatus() {
+        if (!state.token || !state.employee) {
+          return;
+        }
+        try {
+          const response = await callApi({
+            action: 'FETCH_STATUS',
+            employeeId: state.employee.id,
+            token: state.token
+          });
+          handleStatusResponse(response);
+        } catch (error) {
+          showToast('状態取得に失敗しました', true);
+        }
+      }
+
+      async function handleClockEvent(eventType) {
+        if (!state.token || !state.employee) {
+          return;
+        }
+        setLoading(true);
+        try {
+          const response = await callApi({
+            action: 'CLOCK_EVENT',
+            employeeId: state.employee.id,
+            token: state.token,
+            eventType: eventType,
+            clientTs: new Date().toISOString(),
+            deviceInfo: navigator.userAgent
+          });
+          if (response.status === 'success') {
+            handleStatusResponse(response);
+            showToast('打刻しました', false);
+          } else if (response.code === 'SESSION_INVALID') {
+            handleSessionExpired();
+          } else {
+            showToast('打刻失敗: ' + (response.code || ''), true);
+          }
+        } catch (error) {
+          showToast('通信エラーが発生しました', true);
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      function setLoading(loading) {
+        buttons.forEach(btn => {
+          btn.dataset.prevDisabled = btn.disabled ? 'true' : 'false';
+          if (loading) {
+            btn.disabled = true;
+          } else {
+            btn.disabled = btn.dataset.prevDisabled === 'true';
+          }
+        });
+        if (!loading) {
+          updateButtonStates();
+        }
+      }
+
+      buttons.forEach(btn => {
+        btn.addEventListener('click', () => handleClockEvent(btn.dataset.event));
+      });
+
+      logoutBtn.addEventListener('click', () => {
+        state.token = null;
+        state.employee = null;
+        showPage('login');
+      });
+
+      loginForm.addEventListener('submit', login);
+      showPage(initialPage);
+      if (initialPage === 'clock' && state.token && state.employee) {
+        document.getElementById('employeeName').textContent = state.employee.name;
+        document.getElementById('employeeId').textContent = state.employee.id;
+        startClock();
+        fetchStatus();
+      }
+    }
+  })();
+</script>
+

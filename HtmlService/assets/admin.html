@@ -1,0 +1,256 @@
+<script>
+  (function () {
+    const state = {
+      token: window.__ADMIN_TOKEN__ || null,
+      adminId: window.__ADMIN_ID__ || '',
+      filters: {
+        from: null,
+        to: null,
+        employeeId: ''
+      },
+      employees: [],
+      summary: null,
+      attendances: []
+    };
+
+    document.addEventListener('DOMContentLoaded', init);
+
+    function init() {
+      if (!state.token) {
+        alert('管理者セッションが確認できません。ログインし直してください。');
+        return;
+      }
+
+      const form = document.getElementById('adminFilterForm');
+      const logoutBtn = document.getElementById('adminLogoutBtn');
+      const exportBtn = document.getElementById('exportCsvBtn');
+
+      setDefaultDates();
+      form.addEventListener('submit', handleFilterSubmit);
+      logoutBtn.addEventListener('click', handleLogout);
+      exportBtn.addEventListener('click', handleExportCsv);
+
+      loadEmployees().then(refreshData).catch(handleError);
+    }
+
+    function setDefaultDates() {
+      const today = new Date();
+      const first = new Date(today.getFullYear(), today.getMonth(), 1);
+      state.filters.from = formatInputDate(first);
+      state.filters.to = formatInputDate(today);
+      const form = document.getElementById('adminFilterForm');
+      form.elements.from.value = state.filters.from;
+      form.elements.to.value = state.filters.to;
+    }
+
+    function formatInputDate(date) {
+      return date.toISOString().split('T')[0];
+    }
+
+    function handleFilterSubmit(event) {
+      event.preventDefault();
+      const form = event.currentTarget;
+      state.filters.from = form.elements.from.value;
+      state.filters.to = form.elements.to.value;
+      state.filters.employeeId = form.elements.employeeId.value;
+      refreshData();
+    }
+
+    function handleLogout() {
+      state.token = null;
+      google.script.host.close();
+    }
+
+    function refreshData() {
+      Promise.all([fetchSummary(), fetchAttendances()]).catch(handleError);
+    }
+
+    function callApi(payload) {
+      return new Promise((resolve, reject) => {
+        google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler(error => reject(error))
+          .handleApi(JSON.stringify(Object.assign({}, payload, { token: state.token })));
+      });
+    }
+
+    async function loadEmployees() {
+      const select = document.getElementById('employeeSelect');
+      select.disabled = true;
+      try {
+        const res = await callApi({ action: 'ADMIN_EMPLOYEES' });
+        if (res.status !== 'success') {
+          throw new Error(res.code || '従業員一覧の取得に失敗しました');
+        }
+        state.employees = res.data || [];
+        populateEmployeeSelect(select, state.employees);
+      } finally {
+        select.disabled = false;
+      }
+    }
+
+    function populateEmployeeSelect(select, employees) {
+      select.innerHTML = '<option value="">全員</option>';
+      employees.forEach(emp => {
+        const option = document.createElement('option');
+        option.value = emp.employeeId;
+        option.textContent = `${emp.employeeId} ${emp.name}`;
+        select.appendChild(option);
+      });
+    }
+
+    async function fetchSummary() {
+      const params = {
+        action: 'ADMIN_SUMMARY',
+        from: state.filters.from,
+        to: state.filters.to,
+        employeeId: state.filters.employeeId || ''
+      };
+      const res = await callApi(params);
+      if (res.status !== 'success') {
+        throw new Error(res.code || '集計データの取得に失敗しました');
+      }
+      state.summary = res.data || {};
+      renderSummary(state.summary);
+      renderAlerts(res.alerts || []);
+    }
+
+    async function fetchAttendances() {
+      const params = {
+        action: 'ADMIN_ATTENDANCES',
+        from: state.filters.from,
+        to: state.filters.to,
+        employeeId: state.filters.employeeId || ''
+      };
+      const res = await callApi(params);
+      if (res.status !== 'success') {
+        throw new Error(res.code || '勤怠一覧の取得に失敗しました');
+      }
+      state.attendances = res.data || [];
+      renderTable(state.attendances);
+    }
+
+    function renderSummary(summary) {
+      const work = summary.totalWorkMinutes || 0;
+      const overtime = summary.totalOvertimeMinutes || 0;
+      const average = summary.averageWorkMinutes || 0;
+      const alerts = (summary.alertCount !== undefined ? summary.alertCount : (summary.alerts || []).length) || 0;
+
+      document.getElementById('summaryWork').textContent = formatMinutes(work);
+      document.getElementById('summaryOvertime').textContent = formatMinutes(overtime);
+      document.getElementById('summaryAverage').textContent = formatMinutes(average);
+      document.getElementById('summaryAlerts').textContent = alerts + '件';
+    }
+
+    function renderTable(rows) {
+      const tbody = document.querySelector('#attendanceTable tbody');
+      tbody.innerHTML = '';
+      if (!rows.length) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 7;
+        td.className = 'table-placeholder';
+        td.textContent = '該当データがありません';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        document.getElementById('tableCount').textContent = '0件';
+        return;
+      }
+
+      rows.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${row.date || formatDate(row.timestamp)}</td>
+          <td>${row.employeeId || ''}</td>
+          <td>${row.employeeName || ''}</td>
+          <td>${formatMinutes(row.workMinutes)}</td>
+          <td>${formatMinutes(row.breakMinutes)}</td>
+          <td>${formatMinutes(row.overtimeMinutes)}</td>
+          <td>${row.status || ''}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('tableCount').textContent = `${rows.length}件`;
+    }
+
+    function renderAlerts(alerts) {
+      const list = document.getElementById('alertList');
+      list.innerHTML = '';
+      if (!alerts.length) {
+        const li = document.createElement('li');
+        li.className = 'empty';
+        li.textContent = '該当なし';
+        list.appendChild(li);
+        return;
+      }
+
+      alerts.forEach(alert => {
+        const li = document.createElement('li');
+        li.textContent = `${alert.date} ${alert.employeeName || alert.employeeId}: ${alert.message}`;
+        list.appendChild(li);
+      });
+    }
+
+    function handleExportCsv() {
+      if (!state.attendances.length) {
+        alert('出力対象データがありません。');
+        return;
+      }
+      const headers = ['日付', '社員ID', '氏名', '勤務時間(分)', '休憩時間(分)', '残業(分)', 'ステータス'];
+      const lines = [
+        headers.join(','),
+        ...state.attendances.map(row =>
+          [
+            row.date || formatDate(row.timestamp),
+            row.employeeId || '',
+            row.employeeName || '',
+            row.workMinutes || 0,
+            row.breakMinutes || 0,
+            row.overtimeMinutes || 0,
+            row.status || ''
+          ]
+            .map(escapeCsv)
+            .join(',')
+        )
+      ];
+
+      const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `attendance_${state.filters.from}_${state.filters.to}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function escapeCsv(value) {
+      const str = `${value !== undefined && value !== null ? value : ''}`;
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    }
+
+    function formatMinutes(minutes) {
+      const value = Number(minutes) || 0;
+      const hours = Math.floor(value / 60);
+      const mins = Math.abs(value % 60);
+      return `${hours}h ${mins}m`;
+    }
+
+    function formatDate(timestamp) {
+      if (!timestamp) return '';
+      const date = new Date(timestamp);
+      return date.toISOString().split('T')[0];
+    }
+
+    function handleError(error) {
+      console.error(error);
+      alert(error.message || 'エラーが発生しました');
+    }
+  })();
+</script>
+
