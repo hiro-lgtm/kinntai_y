@@ -7,6 +7,7 @@
         : null,
       currentState: 'NONE'
     };
+    let clockIntervalId = null;
 
     document.addEventListener('DOMContentLoaded', init);
 
@@ -27,7 +28,10 @@
 
       function startClock() {
         updateClock();
-        setInterval(updateClock, 30000);
+        if (clockIntervalId) {
+          clearInterval(clockIntervalId);
+        }
+        clockIntervalId = setInterval(updateClock, 30000);
       }
 
       function updateClock() {
@@ -245,6 +249,10 @@
       logoutBtn.addEventListener('click', () => {
         state.token = null;
         state.employee = null;
+        if (clockIntervalId) {
+          clearInterval(clockIntervalId);
+          clockIntervalId = null;
+        }
         showPage('login');
       });
 
