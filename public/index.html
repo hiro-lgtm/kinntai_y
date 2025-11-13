@@ -56,6 +56,76 @@
           <h3>本日の履歴</h3>
           <ul id="todayLog"></ul>
         </section>
+
+        <section class="edit-section">
+          <h3>打刻を修正</h3>
+          <button type="button" id="showEditBtn" class="btn ghost">打刻修正を開く</button>
+          <div id="editSection" style="display: none;">
+            <div class="edit-filters">
+              <label>
+                期間開始
+                <input type="date" id="editFromDate" />
+              </label>
+              <label>
+                期間終了
+                <input type="date" id="editToDate" />
+              </label>
+              <button type="button" id="loadMyLogsBtn" class="btn primary">読み込み</button>
+            </div>
+            <div class="edit-logs">
+              <table id="myLogsTable">
+                <thead>
+                  <tr>
+                    <th>日時</th>
+                    <th>種別</th>
+                    <th>状態</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td colspan="4" class="table-placeholder">期間を選択して読み込み</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- 編集モーダル（従業員用） -->
+    <div id="editModal" class="modal" style="display: none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>打刻を編集</h3>
+          <button type="button" class="modal-close" id="closeEditModalBtn">&times;</button>
+        </div>
+        <form id="editLogForm">
+          <input type="hidden" id="editRowNumber" />
+          <label>
+            種別
+            <select id="editEventType" required>
+              <option value="CLOCK_IN">出勤</option>
+              <option value="BREAK_START">休憩入</option>
+              <option value="BREAK_END">休憩出</option>
+              <option value="CLOCK_OUT">退勤</option>
+            </select>
+          </label>
+          <label>
+            日時
+            <input type="datetime-local" id="editTimestamp" required />
+          </label>
+          <label>
+            修正理由
+            <textarea id="editReason" rows="3" placeholder="修正理由を入力してください"></textarea>
+          </label>
+          <div class="modal-actions">
+            <button type="button" class="btn ghost" id="cancelEditBtn">キャンセル</button>
+            <button type="submit" class="btn primary">保存</button>
+            <button type="button" class="btn danger" id="deleteMyLogBtn" style="display: none;">削除</button>
+          </div>
+        </form>
       </div>
     </div>
 

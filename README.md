@@ -76,6 +76,26 @@ npm start
 npm run dev
 ```
 
+### スマホからアクセスする方法
+
+1. **PCとスマホを同じWi-Fiネットワークに接続**
+2. **サーバーを起動**（`npm start` または `npm run dev`）
+3. **PCのIPアドレスを確認**
+   - サーバー起動時にコンソールに表示されます
+   - または、以下のコマンドで確認：
+     ```bash
+     # macOS
+     ifconfig | grep "inet " | grep -v 127.0.0.1
+     
+     # Windows
+     ipconfig
+     ```
+4. **スマホのブラウザでアクセス**
+   - `http://[PCのIPアドレス]:3000` にアクセス
+   - 例: `http://192.168.1.100:3000`
+
+**注意**: ファイアウォールでポート3000がブロックされている場合は、許可する必要があります。
+
 ## API エンドポイント
 
 ### 認証
@@ -92,7 +112,26 @@ npm run dev
 - `GET /api/admin/employees` - 全従業員を取得
 - `GET /api/admin/summary` - サマリーを取得
 
+## 📦 納品について
+
+このシステムを納品する場合は、`DELIVERY.md` と `DEPLOYMENT_GUIDE.md` を参照してください。
+
 ## デプロイ
+
+### Railway（推奨・最も簡単）
+
+詳細は `DEPLOYMENT_GUIDE.md` を参照してください。
+
+1. [Railway](https://railway.app/) にアカウント作成
+2. 新しいプロジェクトを作成
+3. GitHubリポジトリを接続
+4. 環境変数を設定：
+   - `GOOGLE_SHEETS_SPREADSHEET_ID`
+   - `GOOGLE_SHEETS_JSON_PATH=./service-account.json`
+   - `JWT_SECRET`
+   - `PORT` (Railwayが自動設定)
+5. `service-account.json` ファイルをアップロード（Variables → Files）
+6. デプロイが完了すると、自動的にURLが生成されます
 
 ### Heroku
 
@@ -105,7 +144,35 @@ heroku config:set JWT_SECRET=...
 git push heroku main
 ```
 
-### Vercel / Netlify
+デプロイ後、スマホから `https://your-app-name.herokuapp.com` にアクセスできます。
 
-静的ファイル（`public/`）をホスティングし、API部分は別途デプロイするか、サーバーレス関数として実装してください。
+### Railway
+
+1. [Railway](https://railway.app/) にアカウントを作成
+2. 新しいプロジェクトを作成
+3. GitHubリポジトリを接続
+4. 環境変数を設定：
+   - `GOOGLE_SHEETS_SPREADSHEET_ID`
+   - `GOOGLE_SHEETS_CLIENT_EMAIL`
+   - `GOOGLE_SHEETS_PRIVATE_KEY`
+   - `JWT_SECRET`
+   - `PORT` (Railwayが自動設定)
+5. デプロイが完了すると、自動的にURLが生成されます
+
+### Render
+
+1. [Render](https://render.com/) にアカウントを作成
+2. 新しいWebサービスを作成
+3. GitHubリポジトリを接続
+4. 設定：
+   - Build Command: `npm install`
+   - Start Command: `npm start`
+5. 環境変数を設定（同上）
+6. デプロイ
+
+### 本番環境での注意事項
+
+- `JWT_SECRET` は強力なランダム文字列に変更してください
+- HTTPSを使用することを推奨します（Heroku、Railway、Renderは自動でHTTPSを提供）
+- Google Sheets APIの認証情報は安全に管理してください
 

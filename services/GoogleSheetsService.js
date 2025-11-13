@@ -101,6 +101,58 @@ class GoogleSheetsService {
   getRowNumber(index) {
     return index + 2; // ヘッダー行(1) + 0ベースインデックス + 1
   }
+
+  // 行を削除
+  async deleteRow(sheetName, rowNumber) {
+    await this.ensureAuth();
+    try {
+      // シートIDを取得
+      const spreadsheet = await this.sheets.spreadsheets.get({
+        spreadsheetId: config.spreadsheetId,
+      });
+      const sheet = spreadsheet.data.sheets.find(s => s.properties.title === sheetName);
+      if (!sheet) {
+        throw new Error(`シート "${sheetName}" が見つかりません`);
+      }
+      const sheetId = sheet.properties.sheetId;
+
+      // 行を削除
+      await this.sheets.spreadsheets.batchUpdate({
+        spreadsheetId: config.spreadsheetId,
+        resource: {
+          requests: [{
+            deleteDimension: {
+              range: {
+                sheetId: sheetId,
+                dimension: 'ROWS',
+                startIndex: rowNumber - 1, // 0ベース
+                endIndex: rowNumber,
+              },
+            },
+          }],
+        },
+      });
+    } catch (error) {
+      console.error(`行削除エラー:`, error);
+      throw error;
+    }
+  }
+
+  // 行を更新
+  async updateRow(sheetName, rowNumber, values) {
+    await this.ensureAuth();
+    try {
+      await this.sheets.spreadsheets.values.update({
+        spreadsheetId: config.spreadsheetId,
+        range: `${sheetName}!${rowNumber}:${rowNumber}`,
+        valueInputOption: 'USER_ENTERED',
+        resource: { values: [values] },
+      });
+    } catch (error) {
+      console.error(`行更新エラー:`, error);
+      throw error;
+    }
+  }
 }
 
 module.exports = new GoogleSheetsService();
