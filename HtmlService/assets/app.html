@@ -27,11 +27,16 @@
       }
 
       function startClock() {
+        stopClock();
         updateClock();
+        clockIntervalId = setInterval(updateClock, 30000);
+      }
+
+      function stopClock() {
         if (clockIntervalId) {
           clearInterval(clockIntervalId);
+          clockIntervalId = null;
         }
-        clockIntervalId = setInterval(updateClock, 30000);
       }
 
       function updateClock() {
@@ -79,7 +84,7 @@
           BREAK: ['BREAK_END'],
           CLOCKED_OUT: []
         };
-        const allowed = machine[state.currentState] || [];
+        const allowed = state.employee ? machine[state.currentState] || [] : [];
         buttons.forEach(btn => {
           const event = btn.dataset.event;
           btn.disabled = !allowed.includes(event);
@@ -106,6 +111,18 @@
         });
       }
 
+      function resetClockView() {
+        document.getElementById('employeeName').textContent = '--';
+        document.getElementById('employeeId').textContent = '--';
+        document.getElementById('currentDate').textContent = '--';
+        document.getElementById('currentTime').textContent = '--';
+        document.getElementById('currentStatus').textContent = '--';
+        renderEvents([]);
+        renderTodayLog([]);
+        state.currentState = 'NONE';
+        updateButtonStates();
+      }
+
       function showToast(message, isError) {
         let toast = document.querySelector('.toast');
         if (!toast) {
@@ -122,7 +139,11 @@
       function handleSessionExpired() {
         state.token = null;
         state.employee = null;
+        stopClock();
         showToast('セッションが切れました。再度ログインしてください。', true);
+        resetClockView();
+        loginForm.reset();
+        loginMessage.textContent = '';
         showPage('login');
       }
 
@@ -143,15 +164,48 @@
         }
       }
 
-      function callApi(payload) {
+      function callApi(payload, attempt = 0) {
         return new Promise((resolve, reject) => {
           google.script.run
             .withSuccessHandler(resolve)
             .withFailureHandler(error => {
-              reject(error);
+              const message = extractErrorMessage(error);
+              if (shouldRetryApi(message, attempt)) {
+                const nextAttempt = attempt + 1;
+                const delay = Math.min(500, 150 * (nextAttempt + 1));
+                setTimeout(() => {
+                  callApi(payload, nextAttempt).then(resolve).catch(reject);
+                }, delay);
+              } else {
+                reject(new Error(message));
+              }
             })
             .handleApi(JSON.stringify(payload));
         });
+      }
+
+      function extractErrorMessage(error) {
+        if (!error) {
+          return '不明なエラーが発生しました';
+        }
+        if (typeof error === 'string') {
+          return error;
+        }
+        if (error.message) {
+          return error.message;
+        }
+        if (error.toString) {
+          return error.toString();
+        }
+        return '不明なエラーが発生しました';
+      }
+
+      function shouldRetryApi(message, attempt) {
+        if (attempt >= 2) {
+          return false;
+        }
+        const normalized = (message || '').toLowerCase();
+        return normalized.includes('message port closed before a response was received');
       }
 
       async function login(event) {
@@ -249,10 +303,10 @@
       logoutBtn.addEventListener('click', () => {
         state.token = null;
         state.employee = null;
-        if (clockIntervalId) {
-          clearInterval(clockIntervalId);
-          clockIntervalId = null;
-        }
+        stopClock();
+        resetClockView();
+        loginForm.reset();
+        loginMessage.textContent = '';
         showPage('login');
       });
 
@@ -263,6 +317,8 @@
         document.getElementById('employeeId').textContent = state.employee.id;
         startClock();
         fetchStatus();
+      } else {
+        resetClockView();
       }
     }
   })();
