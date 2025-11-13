@@ -151,6 +151,12 @@
         if (data.status !== 'success') {
           if (data.code === 'SESSION_INVALID') {
             handleSessionExpired();
+            return;
+          }
+          if (data.message) {
+            showToast('状態取得エラー: ' + data.message, true);
+          } else if (data.code && data.code !== 'SESSION_INVALID') {
+            showToast('状態取得エラー: ' + data.code, true);
           }
           return;
         }
@@ -222,18 +228,22 @@
         try {
           const response = await callApi(payload);
           if (response.status !== 'success') {
-            loginMessage.textContent = 'ログイン失敗: ' + (response.code || '');
+            const reason = response.message || response.code || '';
+            loginMessage.textContent = 'ログイン失敗: ' + reason;
             return;
           }
           state.token = response.token;
           state.employee = response.employee;
           document.getElementById('employeeName').textContent = response.employee.name;
           document.getElementById('employeeId').textContent = response.employee.id;
+          updateButtonStates();
           showPage('clock');
           startClock();
           fetchStatus();
         } catch (error) {
-          loginMessage.textContent = 'ログインに失敗しました: ' + error.message;
+          const message = error && error.message ? error.message : '';
+          loginMessage.textContent =
+            'ログインに失敗しました' + (message ? ': ' + message : '');
         }
       }
 
@@ -249,7 +259,9 @@
           });
           handleStatusResponse(response);
         } catch (error) {
-          showToast('状態取得に失敗しました', true);
+          console.error('fetchStatus failed', error);
+          const message = error && error.message ? ': ' + error.message : '';
+          showToast('状態取得に失敗しました' + message, true);
         }
       }
 
@@ -273,10 +285,13 @@
           } else if (response.code === 'SESSION_INVALID') {
             handleSessionExpired();
           } else {
-            showToast('打刻失敗: ' + (response.code || ''), true);
+            const reason = response.message || response.code || '原因不明のエラー';
+            showToast('打刻失敗: ' + reason, true);
           }
         } catch (error) {
-          showToast('通信エラーが発生しました', true);
+          console.error('handleClockEvent failed', error);
+          const message = error && error.message ? ': ' + error.message : '';
+          showToast('通信エラーが発生しました' + message, true);
         } finally {
           setLoading(false);
         }

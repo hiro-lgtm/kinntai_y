@@ -117,7 +117,7 @@
       try {
         const res = await callApi({ action: 'ADMIN_EMPLOYEES' });
         if (res.status !== 'success') {
-          throw new Error(res.code || '従業員一覧の取得に失敗しました');
+          throw new Error(res.message || res.code || '従業員一覧の取得に失敗しました');
         }
         state.employees = res.data || [];
         populateEmployeeSelect(select, state.employees);
@@ -145,7 +145,7 @@
       };
       const res = await callApi(params);
       if (res.status !== 'success') {
-        throw new Error(res.code || '集計データの取得に失敗しました');
+        throw new Error(res.message || res.code || '集計データの取得に失敗しました');
       }
       state.summary = res.data || {};
       renderSummary(state.summary);
@@ -161,7 +161,7 @@
       };
       const res = await callApi(params);
       if (res.status !== 'success') {
-        throw new Error(res.code || '勤怠一覧の取得に失敗しました');
+        throw new Error(res.message || res.code || '勤怠一覧の取得に失敗しました');
       }
       state.attendances = res.data || [];
       renderTable(state.attendances);

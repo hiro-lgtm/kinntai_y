@@ -29,7 +29,11 @@ function doPost(e) {
 
   const payload = JSON.parse(e.postData.contents);
 
-  return buildJsonResponse(dispatchAction(payload));
+  try {
+    return buildJsonResponse(dispatchAction(payload));
+  } catch (error) {
+    return buildJsonResponse(buildErrorResponse(error), 500);
+  }
 }
 
 /**
@@ -37,7 +41,11 @@ function doPost(e) {
  */
 function handleApi(payloadJson) {
   const payload = typeof payloadJson === 'string' ? JSON.parse(payloadJson) : payloadJson;
-  return dispatchAction(payload);
+  try {
+    return dispatchAction(payload);
+  } catch (error) {
+    return buildErrorResponse(error);
+  }
 }
 
 function dispatchAction(payload) {
@@ -62,6 +70,32 @@ function dispatchAction(payload) {
         code: 'UNSUPPORTED_ACTION'
       };
   }
+}
+
+function buildErrorResponse(error) {
+  const message = extractErrorMessage(error);
+  console.error('[handleApi] ' + message, error && error.stack ? '\n' + error.stack : '');
+  return {
+    status: 'error',
+    code: 'INTERNAL_ERROR',
+    message: message
+  };
+}
+
+function extractErrorMessage(error) {
+  if (!error) {
+    return '内部エラーが発生しました';
+  }
+  if (typeof error === 'string') {
+    return error;
+  }
+  if (error.message) {
+    return error.message;
+  }
+  if (error.toString) {
+    return error.toString();
+  }
+  return '内部エラーが発生しました';
 }
 
 /**
