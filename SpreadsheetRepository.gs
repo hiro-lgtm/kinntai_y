@@ -2,7 +2,13 @@
  * スプレッドシートとのやり取りを抽象化するリポジトリ。
  */
 const SpreadsheetRepository = (() => {
-  const ss = Config.getSpreadsheet();
+  function getSheet(name) {
+    const sheet = Config.getSpreadsheet().getSheetByName(name);
+    if (!sheet) {
+      throw new Error(`指定されたシートが見つかりません: ${name}`);
+    }
+    return sheet;
+  }
 
   const SHEETS = {
     EMPLOYEES: 'Employees',
@@ -17,7 +23,7 @@ const SpreadsheetRepository = (() => {
   }
 
   function getAllEmployees(includeInactive) {
-    const sheet = ss.getSheetByName(SHEETS.EMPLOYEES);
+    const sheet = getSheet(SHEETS.EMPLOYEES);
     const values = sheet.getDataRange().getValues();
     const header = values.shift();
 
@@ -42,7 +48,7 @@ const SpreadsheetRepository = (() => {
   }
 
   function appendAttendanceLog(record) {
-    const sheet = ss.getSheetByName(SHEETS.ATTENDANCE_LOG);
+    const sheet = getSheet(SHEETS.ATTENDANCE_LOG);
     sheet.appendRow([
       Utilities.getUuid(),
       new Date(),
@@ -57,7 +63,7 @@ const SpreadsheetRepository = (() => {
   }
 
   function getRecentEvents(employeeId, limit) {
-    const sheet = ss.getSheetByName(SHEETS.ATTENDANCE_LOG);
+    const sheet = getSheet(SHEETS.ATTENDANCE_LOG);
     const values = sheet.getDataRange().getValues();
     const header = values.shift();
     const indexMap = buildIndexMap(header);
@@ -83,7 +89,7 @@ const SpreadsheetRepository = (() => {
     const nextDate = new Date(targetDate);
     nextDate.setDate(nextDate.getDate() + 1);
 
-    const sheet = ss.getSheetByName(SHEETS.ATTENDANCE_LOG);
+    const sheet = getSheet(SHEETS.ATTENDANCE_LOG);
     const values = sheet.getDataRange().getValues();
     const header = values.shift();
     const indexMap = buildIndexMap(header);
@@ -102,7 +108,7 @@ const SpreadsheetRepository = (() => {
   }
 
   function upsertDailySummary(employeeId, date, summary) {
-    const sheet = ss.getSheetByName(SHEETS.DAILY_SUMMARY);
+    const sheet = getSheet(SHEETS.DAILY_SUMMARY);
     const values = sheet.getDataRange().getValues();
     const header = values.shift();
     const indexMap = buildIndexMap(header);
@@ -133,7 +139,7 @@ const SpreadsheetRepository = (() => {
   }
 
   function fetchDailySummaries(from, to, employeeId) {
-    const sheet = ss.getSheetByName(SHEETS.DAILY_SUMMARY);
+    const sheet = getSheet(SHEETS.DAILY_SUMMARY);
     const values = sheet.getDataRange().getValues();
     const header = values.shift();
     const indexMap = buildIndexMap(header);
@@ -208,7 +214,7 @@ const SpreadsheetRepository = (() => {
       after
     );
 
-    const sheet = ss.getSheetByName(SHEETS.ADMIN_ADJUSTMENT);
+    const sheet = getSheet(SHEETS.ADMIN_ADJUSTMENT);
     sheet.appendRow([
       Utilities.getUuid(),
       new Date(),
